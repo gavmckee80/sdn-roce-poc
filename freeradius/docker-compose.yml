@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: radius-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=radius
+      - POSTGRES_PASSWORD=radiuspass
+      - POSTGRES_DB=radius
+    volumes:
+      - ./postgres/schema.sql:/docker-entrypoint-initdb.d/init.sql
+
+  radius:
+    image: freeradius/freeradius-server:latest
+    container_name: freeradius
+    restart: always
+    command: freeradius -X
+    ports:
+      - "1812:1812/udp"
+      - "1813:1813/udp"
+    depends_on:
+      - db
+    volumes:
+      - ./radius/mods-enabled/sql:/etc/freeradius/mods-enabled/sql:ro
+      - ./radius/mods-config/sql/main/postgresql:/etc/freeradius/mods-config/sql/main/postgresql:ro
+      - ./radius/sites-enabled/default:/etc/freeradius/sites-enabled/default:ro

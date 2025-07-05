@@ -1,0 +1,23 @@
+sql {
+  driver = "rlm_sql_postgresql"
+  dialect = "postgresql"
+  server = "db"
+  port = 5432
+  login = "radius"
+  password = "radiuspass"
+  radius_db = "radius"
+  read_clients = yes
+  group_attribute = "sqlgroup"
+
+  authcheck_table = "radcheck"
+  authreply_table = "radreply"
+  groupcheck_table = "radgroupcheck"
+  groupreply_table = "radgroupreply"
+  usergroup_table = "radusergroup"
+  acct_table1 = "radacct"
+  acct_table2 = "radacct"
+  postauth_table = "radpostauth"
+  client_table = "nas"  
+  
+  $INCLUDE /etc/freeradius/mods-config/sql/main/postgresql/queries.conf
+}
