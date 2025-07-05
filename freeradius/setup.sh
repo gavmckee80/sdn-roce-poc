@@ -47,6 +47,7 @@ services:
 EOF
 
 echo "⚙️ Creating radius/mods-enabled/sql config..."
+
 cat > radius/mods-enabled/sql <<EOF
 sql {
   driver = "rlm_sql_postgresql"
@@ -74,6 +75,7 @@ sql {
 EOF
 
 echo "⚙️ Creating radius/sites-enabled/default config..."
+
 cat > radius/sites-enabled/default <<EOF
 server default {
   listen {
@@ -82,11 +84,12 @@ server default {
     port = 1812
   }
 
-  authorize {
-    sql
+  authenticate {
+    pap
   }
 
-  authenticate {
+  authorize {
+    sql
     pap
   }
 

@@ -1,228 +1,249 @@
-Absolutely — here's the full, production-ready `README.md` for your **SQL-only FreeRADIUS setup** in `sdn-roce-poc/freeradius`. This version:
+# SDN RoCE POC - FreeRADIUS Setup
 
-✅ Walks through setup, testing, and reset
-✅ Fixes all common issues (BlastRADIUS, `Cleartext-Password`, SQL auth, missing tables)
-✅ Works cleanly with Docker + PostgreSQL
-✅ Assumes you are using the `setup.sh` provided earlier
+This repository contains a FreeRADIUS deployment for SDN RoCE (RDMA over Converged Ethernet) proof-of-concept testing. The setup uses Docker containers with PostgreSQL as the backend database.
 
----
+## 📋 Prerequisites
 
-## 📘 `sdn-roce-poc/freeradius/README.md`
+Before running the setup, ensure you have the following installed:
 
-````markdown
-# FreeRADIUS SQL-Only Deployment
+- **Docker** (version 20.10 or later)
+- **Docker Compose** (version 2.0 or later)
+- **radtest** utility (for testing authentication)
 
-This folder provides a fully containerized FreeRADIUS 3.2.7 deployment using PostgreSQL as the sole backend. It is part of the broader `sdn-roce-poc` project and is designed for dynamic, infrastructure-integrated RADIUS deployments.
+### Installing radtest
 
----
+On Ubuntu/Debian:
+```bash
+sudo apt-get install freeradius-utils
+```
 
-## 📦 Components
+On CentOS/RHEL:
+```bash
+sudo yum install freeradius-utils
+```
 
-- **FreeRADIUS** – latest image with only SQL-based configuration
-- **PostgreSQL** – stores all user, NAS (client), accounting, group, and post-auth data
-- **setup.sh** – builds the config and initializes the environment
+## 🚀 Quick Setup
 
----
-
-## 🚀 Quickstart
-
-### 1. Install dependencies
-
-- Docker
-- Docker Compose
-- `radtest` (from `freeradius-utils` package)
-
-### 2. Run setup
+The `setup.sh` script automates the entire FreeRADIUS deployment process:
 
 ```bash
 cd freeradius
 chmod +x setup.sh
 ./setup.sh
-````
+```
 
-This will:
+## 🔧 What `setup.sh` Does
 
-* Download FreeRADIUS 3.2.7 schema and queries
-* Create all required config files
-* Start both containers
-* Insert:
+The setup script performs the following steps in sequence:
 
-  * NAS client: `127.0.0.1` (secret: `testing123`)
-  * Test user: `testuser` / `testpass`
+### 1. Directory Structure Creation
+Creates the necessary directory structure:
+```
+freeradius/
+├── postgres/
+├── radius/
+│   ├── mods-enabled/
+│   ├── mods-config/
+│   │   └── sql/
+│   │       └── main/
+│   │           └── postgresql/
+│   └── sites-enabled/
+```
 
----
+### 2. FreeRADIUS Configuration Downloads
+Downloads official FreeRADIUS 3.2.7 configuration files:
+- **PostgreSQL Schema**: `postgres/schema.sql` - Database table definitions
+- **SQL Queries**: `radius/mods-config/sql/main/postgresql/queries.conf` - SQL query templates
 
-## 🧪 Test Authentication
+### 3. Docker Compose Configuration
+Generates `docker-compose.yml` with two services:
 
-Run from your host:
+#### PostgreSQL Database Service
+- **Image**: `postgres:15`
+- **Container Name**: `radius-postgres`
+- **Database**: `radius`
+- **User**: `radius`
+- **Password**: `radiuspass`
+- **Port**: 5432 (internal)
+- **Volume**: Mounts schema.sql for automatic initialization
+
+#### FreeRADIUS Service
+- **Image**: `freeradius/freeradius-server:latest`
+- **Container Name**: `freeradius`
+- **Ports**: 
+  - 1812/udp (authentication)
+  - 1813/udp (accounting)
+- **Dependencies**: Waits for PostgreSQL service
+- **Volumes**: Mounts configuration files as read-only
+
+### 4. FreeRADIUS SQL Module Configuration
+Creates `radius/mods-enabled/sql` with PostgreSQL connection settings:
+- **Driver**: `rlm_sql_postgresql`
+- **Database**: `radius` on `db` container
+- **Credentials**: `radius`/`radiuspass`
+- **Tables**: Configures all RADIUS tables (radcheck, radreply, etc.)
+
+### 5. FreeRADIUS Site Configuration
+Creates `radius/sites-enabled/default` with authentication flow:
+- **Authentication**: PAP (Password Authentication Protocol)
+- **Authorization**: SQL database lookup
+- **Accounting**: SQL database logging
+- **Session Management**: SQL-based
+- **Post-Authentication**: SQL logging
+
+### 6. Container Deployment
+- Stops any existing containers (`docker-compose down -v`)
+- Starts fresh containers (`docker-compose up -d`)
+- Waits 5 seconds for database initialization
+
+### 7. Initial Data Setup
+Inserts default test data into PostgreSQL:
+
+#### NAS Client Configuration
+```sql
+INSERT INTO nas (nasname, shortname, type, secret)
+VALUES ('127.0.0.1', 'localhost', 'other', 'testing123')
+```
+
+#### Test User Account
+```sql
+INSERT INTO radcheck (username, attribute, op, value)
+VALUES ('testuser', 'Cleartext-Password', ':=', 'testpass')
+```
+
+## 🧪 Testing the Setup
+
+After successful setup, test authentication with:
 
 ```bash
 radtest testuser testpass 127.0.0.1 0 testing123
 ```
 
-Expected output:
-
-```text
+**Expected Output:**
+```
 Sent Access-Request ...
 Received Access-Accept ...
 ```
 
----
+## 📊 Database Schema
 
-## 🔐 NAS (Client) Configuration
+The setup creates the following PostgreSQL tables:
+- `nas` - Network Access Server (client) configurations
+- `radcheck` - User authentication attributes
+- `radreply` - User reply attributes
+- `radgroupcheck` - Group check attributes
+- `radgroupreply` - Group reply attributes
+- `radusergroup` - User-group associations
+- `radacct` - Accounting records
+- `radpostauth` - Post-authentication records
 
-### Add a new NAS client (RADIUS device)
+## 🔧 Management Commands
 
+### View Running Containers
+```bash
+docker-compose ps
+```
+
+### View Logs
+```bash
+# FreeRADIUS logs
+docker-compose logs radius
+
+# PostgreSQL logs
+docker-compose logs db
+```
+
+### Access PostgreSQL Database
+```bash
+docker exec -it radius-postgres psql -U radius -d radius
+```
+
+### Add New NAS Client
 ```bash
 docker exec -it radius-postgres psql -U radius -d radius -c \
 "INSERT INTO nas (nasname, shortname, type, secret)
- VALUES ('172.24.0.24', 'dockerhost2', 'other', 'testing123');"
+ VALUES ('192.168.1.100', 'router1', 'other', 'mysecret');"
 ```
 
-### View existing NAS clients
-
-```bash
-docker exec -it radius-postgres psql -U radius -d radius -c "SELECT * FROM nas;"
-```
-
----
-
-## 👤 User Management
-
-### Add a user
-
+### Add New User
 ```bash
 docker exec -it radius-postgres psql -U radius -d radius -c \
 "INSERT INTO radcheck (username, attribute, op, value)
- VALUES ('alice', 'Cleartext-Password', ':=', 'securepass');"
+ VALUES ('newuser', 'Cleartext-Password', ':=', 'newpass');"
 ```
-
-### View all users
-
-```bash
-docker exec -it radius-postgres psql -U radius -d radius -c "SELECT * FROM radcheck;"
-```
-
----
 
 ## 🔄 Reset Environment
 
-To fully reset the environment:
+To completely reset the environment:
 
 ```bash
 docker-compose down -v
 ./setup.sh
 ```
 
-This will destroy the database volume and re-run the schema and inserts.
+This will:
+- Stop all containers
+- Remove all volumes (destroying database data)
+- Re-run the entire setup process
 
----
+## 🛠 Troubleshooting
 
-## 🛠 Common Issues & Fixes
+### Common Issues
 
-### 🔐 BlastRADIUS warning (Message-Authenticator)
+1. **Port Already in Use**
+   ```bash
+   # Check what's using the ports
+   sudo netstat -tulpn | grep :1812
+   sudo netstat -tulpn | grep :1813
+   ```
 
-**Log:**
+2. **Database Connection Issues**
+   ```bash
+   # Check if PostgreSQL is running
+   docker-compose logs db
+   ```
 
-```text
-Please set "require_message_authenticator = true" for client localhost
-```
+3. **FreeRADIUS Configuration Errors**
+   ```bash
+   # Check FreeRADIUS logs
+   docker-compose logs radius
+   ```
 
-**Fix:** Add `client localhost` to a `clients.d/localhost.conf` file:
+### Debug Mode
 
-```conf
-client localhost {
-  ipaddr = 127.0.0.1
-  secret = testing123
-  require_message_authenticator = yes
-}
-```
-
-And mount it via Docker:
-
+To run FreeRADIUS in debug mode, modify the docker-compose.yml:
 ```yaml
-volumes:
-  - ./radius/clients.d:/etc/freeradius/clients.d:ro
+command: freeradius -X
 ```
 
----
+## 📁 File Structure
 
-### ⚠️ No Auth-Type found / Cleartext-Password not handled
-
-**Log:**
-
-```text
-No module configured to handle comparisons with &control:Cleartext-Password
+After setup, your directory will contain:
+```
+freeradius/
+├── setup.sh                    # Setup script
+├── docker-compose.yml          # Generated Docker configuration
+├── postgres/
+│   └── schema.sql             # Downloaded PostgreSQL schema
+└── radius/
+    ├── mods-enabled/
+    │   └── sql                # SQL module configuration
+    ├── mods-config/
+    │   └── sql/
+    │       └── main/
+    │           └── postgresql/
+    │               └── queries.conf  # Downloaded SQL queries
+    └── sites-enabled/
+        └── default            # FreeRADIUS site configuration
 ```
 
-**Fix:** Make sure `pap` is enabled:
+## 🔐 Security Notes
 
-#### In `sites-enabled/default`:
+- Default credentials are used for testing only
+- In production, change all passwords and secrets
+- Consider using environment variables for sensitive data
+- The setup uses cleartext passwords for simplicity; consider hashing in production
 
-```conf
-authorize {
-  sql
-  pap
-}
+## 📝 License
 
-authenticate {
-  pap
-}
-```
-
-#### And ensure `mods-enabled/pap` exists:
-
-```bash
-ln -s ../mods-available/pap radius/mods-enabled/pap
-```
-
----
-
-### ❌ SQL table not found (e.g. `radusergroup`)
-
-**Fix:** Connect to Postgres:
-
-```bash
-docker exec -it radius-postgres psql -U radius -d radius
-```
-
-And create the missing table:
-
-```sql
-CREATE TABLE radusergroup (
-  id serial PRIMARY KEY,
-  username TEXT NOT NULL,
-  groupname TEXT NOT NULL,
-  priority INTEGER DEFAULT 0
-);
-```
-
-Optionally:
-
-```sql
-INSERT INTO radusergroup (username, groupname, priority)
-VALUES ('testuser', 'default', 0);
-```
-
----
-
-## 📂 Files Used
-
-| File / Dir                            | Purpose                                |
-| ------------------------------------- | -------------------------------------- |
-| `setup.sh`                            | Creates config and downloads schema    |
-| `docker-compose.yml`                  | Launches FreeRADIUS and PostgreSQL     |
-| `postgres/schema.sql`                 | Schema downloaded from FreeRADIUS repo |
-| `radius/sites-enabled/default`        | Main virtual server                    |
-| `radius/mods-enabled/sql`             | SQL connection + table config          |
-| `radius/mods-config/sql/queries.conf` | SQL query templates                    |
-
----
-
-## 📘 Reference
-
-* FreeRADIUS SQL schema (PostgreSQL):
-  [https://github.com/FreeRADIUS/freeradius-server/blob/release\_3\_2\_7/raddb/mods-config/sql/main/postgresql/schema.sql](https://github.com/FreeRADIUS/freeradius-server/blob/release_3_2_7/raddb/mods-config/sql/main/postgresql/schema.sql)
-* Queries.conf:
-  [https://github.com/FreeRADIUS/freeradius-server/blob/release\_3\_2\_7/raddb/mods-config/sql/main/postgresql/queries.conf](https://github.com/FreeRADIUS/freeradius-server/blob/release_3_2_7/raddb/mods-config/sql/main/postgresql/queries.conf)
-
+This project is part of the SDN RoCE POC and is intended for research and testing purposes.
