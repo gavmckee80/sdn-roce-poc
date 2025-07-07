@@ -1,0 +1,53 @@
+timeout: 5s
+skip-verify: true
+port: 9339
+loader:
+  type: consul
+  # address of the loader server
+  address: consul:8500
+  # Consul Data center, defaults to dc1
+  datacenter: dc1
+  services:
+    # - name: ndcr-lab-netq
+    #   config:
+    #     skip-verify: true
+    #     subscriptions:
+    #     - netq-interface-counters
+    #     - netq-system
+    #     - netq-components
+    #     - netq-interface-state
+    #     - netq-lldp
+    #   outputs:
+    #     - vmetrics
+    #     - nats-output
+    - name: vaeq-wan-junos
+      config:
+        username: user
+        password: Pa55word
+        skip-verify: true
+        subscriptions:
+        - junos-interface-counters
+        - junos-components
+        - junos-interface-state
+        - junos-transceiver-power
+      outputs:
+        - vmetrics
+        - nats-output
+outputs:
+  nats-output:
+    type: nats
+    address: nats:4222
+    subject: gnmi
+  vmetrics:
+    type: prometheus_write
+    url: http://victoriametrics:8428/api/v1/write
+    strings-as-labels: true
+
+subscriptions:
+  netq-system:
+    target: netq
+    set-target: true
+    paths: ["/system"]
+    mode: STREAM
+    encoding: JSON
+    stream-mode: ON_CHANGE
