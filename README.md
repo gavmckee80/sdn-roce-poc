@@ -377,6 +377,194 @@ sdn-roce-poc/
 ### Arista EOS OpenConfig Support
 - [Arista EOS Path Support](https://www.arista.com/en/support/toi/path-support?pn=EOS-4.34.1F)
 
+To subscribe to an Openconfig path with GNMIC 
+
+```shell
+./app/gnmic subscribe --encoding=json --path "/interfaces/interface[name=Ethernet1]" -a 172.24.0.23:6030 --username gmckee --password ******** --insecure
+```
+
+EOS native path 
+
+dot1x
+
+```shell
+./app/gnmic subscribe --encoding=json --path "eos_native:/Sysdb/dot1x/status/dot1xIntfStatus" -a 172.24.0.23:6030 --username gmckee --password ****** --insecure
+```
+
+You can also provide the interface name `Ethernet1` in this example
+
+```shell
+./app/gnmic subscribe --encoding=json --path "eos_native:/Sysdb/dot1x/status/dot1xIntfStatus[name=Ethernet1]" -a 172.24.0.23:6030 --username gmckee --password ****** --insecure
+
+{
+  "source": "172.24.0.23:6030",
+  "subscription-name": "default-1751989115",
+  "timestamp": 1751989131151086729,
+  "time": "2025-07-08T15:38:51.151086729Z",
+  "prefix": "eos_native:Sysdb/dot1x/status/dot1xIntfStatus/Ethernet1/supplicant/c0:cc:ff:ee:ff:01",
+  "updates": [
+    {
+      "Path": "authStage",
+      "values": {
+        "authStage": "authWaitForAuthServer"
+      }
+    }
+  ]
+}
+{
+  "source": "172.24.0.23:6030",
+  "subscription-name": "default-1751989115",
+  "timestamp": 1751989131151115472,
+  "time": "2025-07-08T15:38:51.151115472Z",
+  "prefix": "eos_native:Sysdb/dot1x/status/dot1xIntfStatus/Ethernet1/supplicant/c0:cc:ff:ee:ff:01",
+  "updates": [
+    {
+      "Path": "lastActivityTime",
+      "values": {
+        "lastActivityTime": 1751989131.1501586
+      }
+    }
+  ]
+}
+{
+  "source": "172.24.0.23:6030",
+  "subscription-name": "default-1751989115",
+  "timestamp": 1751989131151353680,
+  "time": "2025-07-08T15:38:51.15135368Z",
+  "prefix": "eos_native:Sysdb/dot1x/status/dot1xIntfStatus/Ethernet1/stats",
+  "updates": [
+    {
+      "Path": "rxInvalid",
+      "values": {
+        "rxInvalid": 2242
+      }
+    }
+  ]
+}
+{
+  "source": "172.24.0.23:6030",
+  "subscription-name": "default-1751989115",
+  "timestamp": 1751989131153614652,
+  "time": "2025-07-08T15:38:51.153614652Z",
+  "prefix": "eos_native:Sysdb/dot1x/status/dot1xIntfStatus/Ethernet1/supplicant/c0:cc:ff:ee:ff:01",
+  "updates": [
+    {
+      "Path": "authStage",
+      "values": {
+        "authStage": "authWaitForSupplicant"
+      }
+    }
+  ]
+}
+{
+  "source": "172.24.0.23:6030",
+  "subscription-name": "default-1751989115",
+  "timestamp": 1751989131153624046,
+  "time": "2025-07-08T15:38:51.153624046Z",
+  "prefix": "eos_native:Sysdb/dot1x/status/dot1xIntfStatus/Ethernet1/stats",
+  "updates": [
+    {
+      "Path": "txReq",
+      "values": {
+        "txReq": 16462
+      }
+    }
+  ]
+}
+{
+  "source": "172.24.0.23:6030",
+  "subscription-name": "default-1751989115",
+  "timestamp": 1751989131154170646,
+  "time": "2025-07-08T15:38:51.154170646Z",
+  "prefix": "eos_native:Sysdb/dot1x/status/dot1xIntfStatus/Ethernet1/stats",
+  "updates": [
+    {
+      "Path": "rxResp",
+      "values": {
+        "rxResp": 14201
+      }
+    }
+  ]
+}
+```
+
+
+```shell
+./app/gnmic subscribe --encoding=json --path "eos_native:/Sysdb/l3tenantseg/isolation/request/isolationIntfRequest" -a 172.24.0.23:6030 --username gmckee --password ******** --insecure
+{
+  "sync-response": true
+}
+{
+  "source": "172.24.0.23:6030",
+  "subscription-name": "default-1751988682",
+  "timestamp": 1751988687394840446,
+  "time": "2025-07-08T15:31:27.394840446Z",
+  "prefix": "eos_native:Sysdb/l3tenantseg/isolation/request/isolationIntfRequest/Ethernet1",
+  "updates": [
+    {
+      "Path": "intfId",
+      "values": {
+        "intfId": "Ethernet1"
+      }
+    },
+    {
+      "Path": "name",
+      "values": {
+        "name": "Ethernet1"
+      }
+    },
+    {
+      "Path": "profileName",
+      "values": {
+        "profileName": ""
+      }
+    }
+  ]
+}
+{
+  "source": "172.24.0.23:6030",
+  "subscription-name": "default-1751988682",
+  "timestamp": 1751988687394863430,
+  "time": "2025-07-08T15:31:27.39486343Z",
+  "prefix": "eos_native:Sysdb/l3tenantseg/isolation/request/isolationIntfRequest/Ethernet1",
+  "updates": [
+    {
+      "Path": "profileName",
+      "values": {
+        "profileName": "roce-poc"
+      }
+    }
+  ]
+}
+{
+  "source": "172.24.0.23:6030",
+  "subscription-name": "default-1751988682",
+  "timestamp": 1751988687394865263,
+  "time": "2025-07-08T15:31:27.394865263Z",
+  "prefix": "eos_native:Sysdb/l3tenantseg/isolation/request/isolationIntfRequest/Ethernet1/isolationRequest",
+  "updates": [
+    {
+      "Path": "0:0:2a00:100::_0:0:ffff:ff00::/description",
+      "values": {
+        "0:0:2a00:100::_0:0:ffff:ff00::/description": "Permit Et1 bits 32-39 value 0x2a, bits 40-55 value 0x1"
+      }
+    },
+    {
+      "Path": "0:0:2a00:100::_0:0:ffff:ff00::/isolationCriteria/address",
+      "values": {
+        "0:0:2a00:100::_0:0:ffff:ff00::/isolationCriteria/address": "0:0:2a00:100::"
+      }
+    },
+    {
+      "Path": "0:0:2a00:100::_0:0:ffff:ff00::/isolationCriteria/mask",
+      "values": {
+        "0:0:2a00:100::_0:0:ffff:ff00::/isolationCriteria/mask": "0:0:ffff:ff00::"
+      }
+    }
+  ]
+}
+```
+
 ### Useful Commands
 ```bash
 # List all database tables
@@ -408,7 +596,7 @@ INSERT INTO radcheck (username, attribute, op, value) VALUES ('L3U1', 'Cleartext
 
 Consul
 
-```bash
+```shell
 curl -X PUT http://localhost:8500/v1/agent/service/register \
   -H "Content-Type: application/json" \
   -d '{
@@ -432,3 +620,31 @@ curl -X PUT http://localhost:8500/v1/agent/service/register \
   }'
 ```
 
+Check the status of the health check
+
+```shell
+curl http://localhost:8500/v1/agent/checks | jq
+
+{
+  "gnmi-check": {
+    "Node": "server-1",
+    "CheckID": "gnmi-check",
+    "Name": "gnmi TCP check",
+    "Status": "passing",
+    "Notes": "",
+    "Output": "TCP connect 172.24.0.23:6030: Success",
+    "ServiceID": "vEOS-lab-sw1",
+    "ServiceName": "veos-gnmic",
+    "ServiceTags": [
+      "eos"
+    ],
+    "Type": "tcp",
+    "Interval": "10s",
+    "Timeout": "2s",
+    "ExposedPort": 0,
+    "Definition": {},
+    "CreateIndex": 0,
+    "ModifyIndex": 0
+  }
+}
+```

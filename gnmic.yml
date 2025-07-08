@@ -8,30 +8,15 @@ loader:
   # Consul Data center, defaults to dc1
   datacenter: dc1
   services:
-    # - name: ndcr-lab-netq
-    #   config:
-    #     skip-verify: true
-    #     subscriptions:
-    #     - netq-interface-counters
-    #     - netq-system
-    #     - netq-components
-    #     - netq-interface-state
-    #     - netq-lldp
-    #   outputs:
-    #     - vmetrics
-    #     - nats-output
-    - name: vaeq-wan-junos
+    - name: veos-gnmic
       config:
-        username: user
-        password: Pa55word
+        username: gmckee
+        password: ********
         skip-verify: true
         subscriptions:
-        - junos-interface-counters
-        - junos-components
-        - junos-interface-state
-        - junos-transceiver-power
+        - eos-dot1x
+        - eos-system
       outputs:
-        - vmetrics
         - nats-output
 outputs:
   nats-output:
@@ -43,11 +28,9 @@ outputs:
     url: http://victoriametrics:8428/api/v1/write
     strings-as-labels: true
 
-subscriptions:
-  netq-system:
-    target: netq
-    set-target: true
-    paths: ["/system"]
+subscriptions:    
+  eos-dot1x:
+    paths: ["eos_native:/Sysdb/dot1x/status/dot1xIntfStatus"]
     mode: STREAM
     encoding: JSON
     stream-mode: ON_CHANGE
