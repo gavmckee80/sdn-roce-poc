@@ -82,7 +82,15 @@ docker exec -it radius-postgres psql -U radius -d radius -c "\dt"
 
 ### Network Bridge Configuration
 
-Create a Linux bridge for 802.1X testing:
+Create a management bridge and a bridge for testing the 8021x between the vEOS switch and the Ubuntu test VM
+
+```shell
+sudo ip link add vlab-mgmt type bridge
+sudo ip link add 8021x-br1 type bridge
+
+
+```
+
 
 ```xml
 <!-- /etc/libvirt/qemu/networks/8021x.xml -->
@@ -93,9 +101,30 @@ Create a Linux bridge for 802.1X testing:
 </network>
 ```
 
+```xml
+<!-- /etc/libvirt/qemu/networks/vlab-mgmt.xml -->
+<network>
+  <name>vlab-mgmt</name>
+  <forward mode='bridge'/>
+  <bridge name='vlab-mgmt'/>
+</network>
+```
+
+```shell
+sudo virsh net-define /etc/libvirt/qemu/networks/8021x.xml
+sudo virsh net-define /etc/libvirt/qemu/networks/vlab-mgmt.xml
+sudo virsh net-autostart 8021x
+sudo virsh net-autostart vlab-mgmt
+
+sudo virsh net-start 8021x
+sudo virsh net-start vlab-mgmt
+```
+
+
 Enable EAPOL and LLDP forwarding:
 ```bash
-echo 24 > /sys/class/net/8021x-br1/bridge/group_fwd_mask
+echo 24 > /sys/class/net/vlab-mgmt/bridge/group_fwd_mask
+echo 24 > /sys/class/net/vlab-mgmt/bridge/group_fwd_mask
 ```
 
 ### Virtual Ethernet Interfaces
@@ -128,7 +157,7 @@ virt-install \
   --disk device=cdrom,path=/var/lib/libvirt/images/Aboot-veos-serial-8.0.2.iso,readonly=on \
   --controller type=scsi,model=virtio-scsi \
   --boot cdrom,hd,menu=on \
-  --network type=direct,target=eth1,source=veth-eth1,model=virtio,mac=c0:cc:ff:00:00:14 \
+  --network network=vlab-mgmt,target=eth1,model=virtio,mac=c0:cc:ff:ee:ff:00 \
   --network network=8021x,target=eth2,model=virtio,mac=c0:cc:ff:ee:ff:00 \
   --graphics none \
   --console pty,target_type=serial
@@ -352,6 +381,47 @@ curl http://localhost:8500/v1/agent/checks | jq
   }
 }
 ```
+
+Get CLI command output
+
+```bash
+./app/gnmic --encoding=json get --path "cli:/show segment-l3 ipv6 address profile" -a 172.24.0.23:6030 --username gmckee --password ******** --insecure
+[
+  {
+    "source": "172.24.0.23:6030",
+    "timestamp": 1751993251992294297,
+    "time": "2025-07-08T16:47:31.992294297Z",
+    "updates": [
+      {
+        "Path": "cli:show segment-l3 ipv6 address profile",
+        "values": {
+          "show segment-l3 ipv6 address profile": {
+            "interfaces": {
+              "Ethernet1": {
+                "addresses": {
+                  "3fff:123:2a00:101::1/64": {
+                    "isolationRequest": {
+                      "description": "Permit Et1 bits 32-39 value 0x2a, bits 40-55 value 0x1",
+                      "isolationCriteria": "0:0:2a00:100::/0:0:ffff:ff00::"
+                    },
+                    "state": "assigned"
+                  }
+                },
+                "profileName": "roce-poc",
+                "segmentationPortNumber": 1,
+                "tenants": {
+                  "1": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+]
+```
+
 
 ## 📁 Project Structure
 ```

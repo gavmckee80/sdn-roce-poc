@@ -1,0 +1,95 @@
+
+name: ceos-lab
+
+topology:
+  kinds:
+    ceos:
+      startup-config: ceos_lab_template/ceos.cf.tpl
+      image: ceos-64:4.34.1F-EFT3
+      exec:
+        - sleep 10
+        - FastCli -p 15 -c 'security pki key generate rsa 4096 eAPI.key'
+        - FastCli -p 15 -c 'security pki certificate generate self-signed eAPI.crt key eAPI.key generate rsa 4096 validity 30000 parameters common-name eAPI'
+    linux:
+      image: alpine-host
+  nodes:
+    spine1:
+      kind: ceos
+      mgmt-ipv4: 172.100.100.2
+      labels:
+        ansible-group: spine
+    spine2:
+      kind: ceos
+      mgmt-ipv4: 172.100.100.3
+      labels:
+        ansible-group: spine
+    leaf1-a:
+      kind: ceos
+      mgmt-ipv4: 172.100.100.4
+      labels:
+        ansible-group: leaf
+    leaf1-b:
+      kind: ceos
+      mgmt-ipv4: 172.100.100.5
+      labels:
+        ansible-group: leaf
+    pg-db:
+      kind: linux
+      image: postgres:15
+      mgmt-ipv4: 172.100.100.10
+      aliases: ["db"] 
+      env:
+        POSTGRES_USER: radius
+        POSTGRES_PASSWORD: radiuspass
+        POSTGRES_DB: radius
+      ports:
+        - 5432:5432
+      binds:
+        - ./postgres/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    freeradius:
+      kind: linux
+      image: freeradius/freeradius-server:latest
+      entrypoint: "/usr/sbin/freeradius -X"
+      mgmt-ipv4: 172.100.100.11
+      ports:
+        - 1812:1812/udp
+        - 1813:1813/udp
+      binds:
+        - ./radius/mods-enabled/sql:/etc/freeradius/mods-enabled/sql:ro
+        - ./radius/mods-config/sql/main/postgresql:/etc/freeradius/mods-config/sql/main/postgresql:ro
+        - ./radius/sites-enabled/default:/etc/freeradius/sites-enabled/default:ro
+        - ./radius/dictionary.d/dictionary.arista:/usr/share/freeradius/dictionary.arista
+
+    host1:
+      kind: linux
+      image: ubuntu:24.04-custom                   # override to real Ubuntu
+      mgmt-ipv4: 172.100.100.6
+      # binds:
+      #   - ./host1/cloud-init:/var/lib/cloud/seed/nocloud  # (optional) day-0 netplan, etc.
+      labels:
+        ansible-group: ubuntu
+    host2:
+      kind: linux
+      image: ubuntu:24.04-custom
+      mgmt-ipv4: 172.100.100.7
+      # binds:
+      #   - ./host2/cloud-init:/var/lib/cloud/seed/nocloud  # (optional)
+      labels:
+        ansible-group: ubuntu
+
+
+  links:
+    - endpoints: ["leaf1-a:eth1", "spine1:eth1"]
+    - endpoints: ["leaf1-b:eth1", "spine1:eth2"]
+    - endpoints: ["leaf1-a:eth2", "spine2:eth1"]
+    - endpoints: ["leaf1-b:eth2", "spine2:eth2"]
+    - endpoints: ["leaf1-a:eth3", "spine1:eth3"]
+    - endpoints: ["leaf1-b:eth3", "spine1:eth4"]
+    - endpoints: ["leaf1-a:eth4", "spine2:eth3"]
+    - endpoints: ["leaf1-b:eth4", "spine2:eth4"]
+    - endpoints: ["leaf1-a:eth5", "host1:eth1"]
+    - endpoints: ["leaf1-b:eth5", "host2:eth1"]
+mgmt:
+  network: ceos_clab                
+  ipv4-subnet: 172.100.100.0/24       
+  ipv6-subnet: 2001:172:100:100::/80

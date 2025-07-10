@@ -22,7 +22,7 @@ version: '3.8'
 services:
   db:
     image: postgres:15
-    container_name: radius-postgres
+    container_name: freeradius-postgres
     restart: always
     environment:
       - POSTGRES_USER=radius
@@ -31,10 +31,11 @@ services:
     volumes:
       - ./postgres/schema.sql:/docker-entrypoint-initdb.d/init.sql
 
-  radius:
+  freeradius:
     image: freeradius/freeradius-server:latest
     container_name: freeradius
     restart: always
+    command: freeradius -X
     ports:
       - "1812:1812/udp"
       - "1813:1813/udp"
@@ -44,6 +45,56 @@ services:
       - ./radius/mods-enabled/sql:/etc/freeradius/mods-enabled/sql:ro
       - ./radius/mods-config/sql/main/postgresql:/etc/freeradius/mods-config/sql/main/postgresql:ro
       - ./radius/sites-enabled/default:/etc/freeradius/sites-enabled/default:ro
+      - ./radius/dictionary.d/dictionary.arista:/usr/share/freeradius/dictionary.arista
+
+  gnmic-collector: &gnmic
+    image: ghcr.io/openconfig/gnmic:latest
+    container_name: gnmic-collector
+    volumes:
+      - ./gnmic.yml:/app/gnmic.yml
+      #- ./targets.yml:/app/targets.yml
+    command: "subscribe --config /app/gnmic.yml"
+    depends_on:
+      - consul-agent
+
+  victoriametrics:
+    container_name: victoriametrics
+    image: victoriametrics/victoria-metrics:v1.93.4
+    ports:
+      - 8428:8428
+      - 8089:8089
+      - 8089:8089/udp
+      - 2003:2003
+      - 2003:2003/udp
+      - 4242:4242
+    volumes:
+      - ./vmdata:/storage
+    command:
+      - "--storageDataPath=/storage"
+      - "--graphiteListenAddr=:2003"
+      - "--opentsdbListenAddr=:4242"
+      - "--httpListenAddr=:8428"
+      - "--influxListenAddr=:8089"
+      - "--vmalert.proxyURL=http://vmalert:8880"
+    restart: always
+  nats:
+    image: 'nats:latest'
+    container_name: nats
+    # networks:
+    #   - vm_net    
+    ports:
+      - "4222:4222"
+      - "6222:6222"
+      - "8222:8222"
+  consul-agent:
+    image: hashicorp/consul:latest
+    container_name: consul
+    # networks:
+    #   - vm_net
+    ports:
+      - 8500:8500
+      - 8600:8600/udp
+    command: agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0  
 EOF
 
 echo "⚙️ Creating radius/mods-enabled/sql config..."

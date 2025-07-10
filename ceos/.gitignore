@@ -1,0 +1,9 @@
+# Containerlab generated files
+clab-ceos-lab/
+
+# Python virtual environment
+venv/
+
+# Backup files
+*.bak
+

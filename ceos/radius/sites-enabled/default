@@ -1,0 +1,30 @@
+server default {
+  listen {
+    type = auth
+    ipaddr = *
+    port = 1812
+  }
+
+  authenticate {
+    pap
+    eap
+  }
+
+  authorize {
+    sql
+    pap
+    eap
+  }
+
+  accounting {
+    sql
+  }
+
+  session {
+    sql
+  }
+
+  post-auth {
+    sql
+  }
+}

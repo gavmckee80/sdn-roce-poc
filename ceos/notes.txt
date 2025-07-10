@@ -1,0 +1,25 @@
+apt-get update && apt-get install -y iproute2 net-tools lldpd iputils-ping wpasupplicant vim
+
+
+INSERT INTO nas (nasname, shortname, type, secret) VALUES ('127.0.0.1', 'loopback', 'other', 'testing123');
+INSERT INTO nas (nasname, shortname, type, secret) VALUES ('clab-eos-roce-lab-leaf1-a', 'test1', 'other', 'testing123');
+INSERT INTO nas (nasname, shortname, type, secret) VALUES ('clab-eos-roce-lab-leaf1-b ', 'test1', 'other', 'testing123');
+
+
+INSERT INTO radcheck (username, attribute, op, value) VALUES ('L3U1', 'Cleartext-Password', ':=', 'whatever');
+
+
+/etc/wpa_supplicant/enp2s0.conf 
+ctrl_interface=/run/wpa_supplicant
+ap_scan=0
+network={
+    key_mgmt=IEEE8021X
+    eap=PEAP
+    identity="L3U1"
+    password="whatever"
+    phase2="auth=MSCHAPV2"
+    eapol_flags=0
+}
+
+
+sudo wpa_supplicant -i eth1 -c /etc/wpa_supplicant/eth1.conf -D wired -d

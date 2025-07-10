@@ -1,0 +1,63 @@
+- name: Configure RADIUS for management access using HTTP API
+  hosts: leaf
+  gather_facts: true
+  collections:
+    - arista.eos                # makes eos_config available
+  vars:
+    # Configure HTTP API connection for HTTPS
+    ansible_connection: httpapi
+    ansible_network_os: eos
+    ansible_httpapi_use_proxy: false
+    ansible_httpapi_validate_certs: false
+    ansible_httpapi_port: 443
+    ansible_httpapi_use_ssl: true
+  tasks:
+    - name: Ensure RADIUS server present with management VRF
+      eos_config:
+        lines:
+          - "radius-server host 172.100.100.11 vrf management key 7 120D0004060202037B7977"
+        parents: []             # top-level (global) config
+        match: line             # idempotent – only this exact line managed
+        save_when: modified
+    - name: Add aaa group
+      eos_config:
+        lines:
+          - "server 172.24.0.24 vrf management"
+        parents: ["aaa group server radius RADIUS-SERVER"]             # top-level (global) config
+        match: line             # idempotent – only this exact line managed
+        save_when: modified
+    - name: Enable dot1x with radius server
+      eos_config:
+        lines:
+          - "aaa authentication dot1x default group RADIUS-SERVER"
+        parents: []             # top-level (global) config
+        match: line             # idempotent – only this exact line managed
+        save_when: modified
+    - name: Enable GNMI GRPC
+      eos_config:
+        lines:
+          - "transport grpc default"
+          - "vrf management"
+        parents: ["management api gnmi","transport grpc default"]             # top-level (global) config
+        match: line             # idempotent – only this exact line managed
+        save_when: modified
+    - name: Enable dot1x and aaa authentication
+      eos_config:
+        lines:
+          - "dot1x system-auth-control"
+          - "dot1x protocol lldp bypass"
+          - "dot1x protocol bpdu bypass"
+          - "dot1x dynamic-authorization"
+        parents: []    # top-level (global) config
+        match: line             # idempotent – only this exact line managed
+        save_when: modified
+    - name: Add IPv6 address profile
+      eos_config:
+        lines:
+          - "offset 0 length 32 value 0x3fff0123"
+          - "offset 32 length 8 value 0x2a isolation-criteria"
+          - "offset 40 length 16 value aaa tenant-id isolation-criteria"
+          - "offset 56 length 8 value port-number summarized-over"
+        parents: ["ipv6 address profile roce-poc"]             # top-level (global) config   
+        match: line             # idempotent – only this exact line managed
+        save_when: modified
